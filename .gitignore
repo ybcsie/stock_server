@@ -1,0 +1,6 @@
+*.tmp
+*.js
+*.log
+
+*__pycache__
+.idea
