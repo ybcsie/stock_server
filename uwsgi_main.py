@@ -68,7 +68,7 @@ def application(env, start_response):
     uwsgi_location = env.get("UWSGI_LOCATION")
     assert uwsgi_location is not None, "UWSGI_LOCATION is not defined in server setting"
 
-    sub_dir = path_info.split(uwsgi_location + '/')[1]
+    # sub_dir = path_info.split(uwsgi_location + '/')[1]
     if is_ready:
         stat = "OK"
     else:
