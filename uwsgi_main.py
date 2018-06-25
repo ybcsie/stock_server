@@ -10,11 +10,11 @@ import json
 livedata_dict = {}
 is_ready = False
 
-listed_sid_path = "listed.sid"
-trade_data_dir = "smd"
-dtd_dir = "dtd"
+listed_sid_path = "data/listed.sid"
+trade_data_dir = "data/smd"
+dtd_dir = "data/dtd"
 
-months = 96
+months = 150
 
 
 def main_loop():
@@ -33,7 +33,8 @@ def main_loop():
 
         logger.logp("update_smd_in_list : start")
         force_update = False
-        dataio.update_smd_in_list(listed_id_list, trade_data_dir, months, force_update)
+        dataio.update_smd_in_list(
+            listed_id_list, trade_data_dir, months, force_update)
         logger.logp("update_smd_in_list : done\n")
 
         dataio.update_livedata_dict(listed_id_list, livedata_dict)
