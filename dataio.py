@@ -4,6 +4,7 @@ import tools
 import json
 import datetime
 import os
+import threading
 
 
 logger = msgopt.Logger("updater")
@@ -31,13 +32,14 @@ def get_stock_id_list(sid_path):
 
     for i in range(len(stock_id_list)):
         stock_info = stock_id_list[i].split(',')
-        assert len(stock_info) == 2, "Error: stock list -- {}".format(stock_id_list[i])
+        assert len(
+            stock_info) == 2, "Error: stock list -- {}".format(stock_id_list[i])
         stock_id_list[i] = int(stock_info[0])
 
     return stock_id_list
 
 
-def update_smd_in_list(stock_id_list, smd_dir, months, force_update):
+def update_smd_in_list(stock_id_list, smd_dir, months, force_update=False):
     update_log_path = smd_dir + "/update.log"
 
     if is_smd_need_update(update_log_path) or force_update:
@@ -101,7 +103,7 @@ def update_smd(smd_path, stock_id, months):
         key = "{}{:02d}".format(cur_year, cur_month)
         content = exist_dict.get(key)
 
-        if is_content_need_update(content):
+        if is_content_need_update(content) or i == 0:
             content = crawler.get_month_data(cur_year, cur_month, stock_id)
 
             if content is None:
@@ -210,6 +212,7 @@ def update_all_dtd(dtd_dir, months):
 def update_livedata_dict(stock_id_list, livedata_dict):
     now = datetime.datetime.now()
     if (7 * 60 + 30) < (now.hour * 60 + now.minute) < (8 * 60 + 30):
+        tools.delay(300)
         return
 
     logger.logp("update_livedata : start")
@@ -225,10 +228,12 @@ def update_livedata_dict(stock_id_list, livedata_dict):
     for i, cur_id_list in enumerate(id_list_list):
         logger.logp("get live data {} / {}".format(i + 1, len(id_list_list)))
         livedata_list = crawler.get_livedata_list(cur_id_list)
-        read_livedata_list(livedata_list, livedata_dict)
+        if livedata_list is not None:
+            read_livedata_list(livedata_list, livedata_dict)
 
     t_end = datetime.datetime.now()
-    logger.logp("update_livedata : Total time = {} s".format((t_end - t_start).total_seconds()))
+    logger.logp("update_livedata : Total time = {} s".format(
+        (t_end - t_start).total_seconds()))
     logger.logp("update_livedata : Done")
 
 
@@ -239,7 +244,8 @@ def read_livedata_list(livedata_list, livedata_dict):
         try:
             date = int(livedata["d"])
         except:
-            logger.logp("Error: livedata date -- {} {}".format(stock_id, livedata))
+            logger.logp(
+                "Error: livedata date -- {} {}".format(stock_id, livedata))
             return
 
         try:
@@ -284,5 +290,92 @@ def read_livedata_list(livedata_list, livedata_dict):
         except KeyError:
             delta = 0.0
 
-        livedata_dict["{}".format(stock_id)] = [date, vol, first, highest, lowest, last, delta]
+        livedata_dict["{}".format(stock_id)] = [
+            date, vol, first, highest, lowest, last, delta]
 
+
+def update_sfd(stock_id, days, sfd_path):
+    now = datetime.datetime.now()
+
+    content_dict = get_sfd_dict(sfd_path)
+
+    for i in range(days):
+        yyyymmdd = int(now.strftime("%Y%m%d"))
+
+        content = content_dict.get(str(yyyymmdd))
+
+        # logger.logp("check: {} {}".format(stock_id, yyyymmdd))
+
+        if content is None:
+            content = crawler.get_full_data(stock_id, yyyymmdd)
+
+            if content is not None:
+                if content != {}:
+                    if int(datetime.datetime.fromtimestamp(content["NowDate"] / 1000).strftime("%Y%m%d")) != yyyymmdd:
+                        content = {}
+
+                content_dict[str(yyyymmdd)] = content
+
+        now -= datetime.timedelta(days=1)
+
+    tmp_path = sfd_path + ".tmp"
+    tmp = open(tmp_path, 'w')
+    tmp.write(json.dumps(content_dict))
+    tmp.close()
+
+    os.replace(tmp_path, sfd_path)
+
+
+def get_sfd_dict(sfd_path):
+    opt = {}
+    if not os.path.exists(sfd_path):
+        return opt
+
+    try:
+        sfd_file = open(sfd_path, 'r')
+        opt = json.loads(sfd_file.read())
+        sfd_file.close()
+
+        return opt
+
+    except:
+        return opt
+
+
+def update_sfd_in_list(stock_id_list, sfd_dir, days, force_update=False):
+    now = datetime.datetime.now()
+    if 8 <= now.hour <= 15:
+        return
+
+    update_log_path = sfd_dir + "/update.log"
+    if is_smd_need_update(update_log_path) or force_update:
+        size = len(stock_id_list)
+        id_list_list = []
+        if size > 150:
+            for i in range(0, size, 150):
+                id_list_list.append(stock_id_list[i:i + 150])
+
+        t_list = []
+        for i, cur_id_list in enumerate(id_list_list):
+            t = threading.Thread(target=t_update_sfd_in_list,
+                                 args=(cur_id_list, sfd_dir, days))
+            t_list.append(t)
+            t.start()
+
+        for t in t_list:
+            while t.is_alive():
+                tools.delay(10)
+
+    update_log_file = open(update_log_path, 'w')
+    update_log_file.write(datetime.datetime.now().strftime("%Y/%m/%d/%H"))
+    update_log_file.close()
+
+
+def t_update_sfd_in_list(stock_id_list, sfd_dir, days):
+    for stock_id in stock_id_list:
+        sfd_path = "{}/{}.sfd".format(sfd_dir, stock_id)
+
+        # logger.logp("update {}".format(stock_id))
+        update_sfd(stock_id, days, sfd_path)
+
+    logger.logp("done")

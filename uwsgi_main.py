@@ -13,6 +13,7 @@ is_ready = False
 listed_sid_path = "data/listed.sid"
 trade_data_dir = "data/smd"
 dtd_dir = "data/dtd"
+sfd_dir = "data/sfd"
 
 months = 150
 
@@ -22,6 +23,7 @@ def main_loop():
     global is_ready
     while True:
         updated = True
+        dtd_updated = True
 
         logger.logp("update_listed_list : start")
         dataio.update_listed_list(listed_sid_path)
@@ -37,6 +39,9 @@ def main_loop():
             listed_id_list, trade_data_dir, months, force_update)
         logger.logp("update_smd_in_list : done\n")
 
+        dataio.update_sfd_in_list(
+            listed_id_list, sfd_dir, 365 * 4, force_update)
+
         dataio.update_livedata_dict(listed_id_list, livedata_dict)
 
         is_ready = True
@@ -47,6 +52,9 @@ def main_loop():
             if now.hour == 15 and not updated:
                 break
 
+            if now.hour == 1 and not dtd_updated:
+                break
+
             if not updated:
                 dataio.update_livedata_dict(listed_id_list, livedata_dict)
 
@@ -54,6 +62,10 @@ def main_loop():
                 if updated:
                     updated = False
                 continue
+
+            if now.hour == 0:
+                if dtd_updated:
+                    dtd_updated = False
 
             # # debug
             # dataio.update_livedata_dict(listed_id_list, livedata_dict)
@@ -99,5 +111,6 @@ if __name__ != '__main__':
     threading.Thread(target=main_loop).start()
 
 else:
-    threading.Thread(target=main_loop).start()
-    threading.Thread(target=debug_loop).start()
+    main_loop()
+    # threading.Thread(target=main_loop).start()
+    # threading.Thread(target=debug_loop).start()

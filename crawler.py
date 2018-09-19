@@ -241,3 +241,74 @@ def get_livedata_list(stock_id_list):
 
         return livedata_list["msgArray"]
 
+    tools.delay(30)
+    return None
+
+
+def get_full_data(stock_id, yyyymmdd):
+    delay = 0.3
+    max_try = 5
+    while max_try > 0:
+        tools.delay(delay)
+        logger.logp("connect {} {}".format(stock_id, yyyymmdd))
+
+        try:
+            args = "?action=r&id={}&date={}".format(stock_id, yyyymmdd)
+            url = "http://www.cmoney.tw/notice/chart/stockchart.aspx" + args
+            cookie = http.cookiejar.CookieJar()
+            handler = urllib.request.HTTPCookieProcessor(cookie)
+            opener = urllib.request.build_opener(handler)
+            res = opener.open(url, timeout=5).read().decode()
+
+        except:
+            logger.logp("Error: connection")
+            max_try -= 1
+            tools.delay(3)
+            continue
+
+        try:
+            i = res.find("var ck")
+            s = res.find('"', i) + 1
+            e = res.find('"', s)
+
+            ck = res[s: e]
+
+        except:
+            logger.logp("Error: parse ck")
+            max_try -= 1
+            tools.delay(3)
+            continue
+
+        try:
+            args += "&ck=" + ck
+            url2 = "http://www.cmoney.tw/notice/chart/stock-chart-service.ashx" + args
+            request = urllib.request.Request(url2)
+            request.add_header("Referer", url)
+            res = opener.open(request, timeout=5)
+
+        except:
+            logger.logp("Error: connection")
+            max_try -= 1
+            tools.delay(3)
+            continue
+
+        try:
+            content = json.loads(res.read().decode())
+            if content["ErrorCode"] == 0:
+                return content
+            else:
+                if content["ErrorCode"] == 124554:
+                    return {}
+
+                logger.logp("ErrorCode: {}".format(content["ErrorCode"]))
+                max_try -= 1
+                tools.delay(3)
+                continue
+
+        except:
+            logger.logp("Error: json")
+            max_try -= 1
+            tools.delay(3)
+            continue
+
+    return None
