@@ -100,6 +100,9 @@ def update_smd(smd_path, stock_id, months):
             cur_month = 12
             cur_year -= 1
 
+        if cur_year < 2010:
+            break
+
         key = "{}{:02d}".format(cur_year, cur_month)
         content = exist_dict.get(key)
 
@@ -294,27 +297,30 @@ def read_livedata_list(livedata_list, livedata_dict):
             date, vol, first, highest, lowest, last, delta]
 
 
-def update_sfd(stock_id, days, sfd_path):
+def update_sfd(stock_id, days, sfd_path, smd_path):
     now = datetime.datetime.now()
 
     content_dict = get_sfd_dict(sfd_path)
 
+    trade_day_list = get_trade_day_list(smd_path)
+
     for i in range(days):
         yyyymmdd = int(now.strftime("%Y%m%d"))
 
-        content = content_dict.get(str(yyyymmdd))
+        if yyyymmdd in trade_day_list:
+            content = content_dict.get(str(yyyymmdd))
 
-        # logger.logp("check: {} {}".format(stock_id, yyyymmdd))
+            # logger.logp("check: {} {}".format(stock_id, yyyymmdd))
 
-        if content is None:
-            content = crawler.get_full_data(stock_id, yyyymmdd)
+            if content is None or content.get("DataPrice") is None:
+                content = crawler.get_full_data(stock_id, yyyymmdd)
 
-            if content is not None:
-                if content != {}:
-                    if int(datetime.datetime.fromtimestamp(content["NowDate"] / 1000).strftime("%Y%m%d")) != yyyymmdd:
-                        content = {}
+                if content is not None:
+                    if content != {}:
+                        if int(datetime.datetime.fromtimestamp(content["NowDate"] / 1000).strftime("%Y%m%d")) != yyyymmdd:
+                            content = {}
 
-                content_dict[str(yyyymmdd)] = content
+                    content_dict[str(yyyymmdd)] = content
 
         now -= datetime.timedelta(days=1)
 
@@ -342,7 +348,7 @@ def get_sfd_dict(sfd_path):
         return opt
 
 
-def update_sfd_in_list(stock_id_list, sfd_dir, days, force_update=False):
+def update_sfd_in_list(stock_id_list, sfd_dir, smd_dir, days, force_update=False):
     now = datetime.datetime.now()
     if 8 <= now.hour <= 15:
         return
@@ -351,14 +357,14 @@ def update_sfd_in_list(stock_id_list, sfd_dir, days, force_update=False):
     if is_smd_need_update(update_log_path) or force_update:
         size = len(stock_id_list)
         id_list_list = []
-        if size > 150:
-            for i in range(0, size, 150):
-                id_list_list.append(stock_id_list[i:i + 150])
+        if size > 200:
+            for i in range(0, size, 200):
+                id_list_list.append(stock_id_list[i:i + 200])
 
         t_list = []
         for i, cur_id_list in enumerate(id_list_list):
             t = threading.Thread(target=t_update_sfd_in_list,
-                                 args=(cur_id_list, sfd_dir, days))
+                                 args=(cur_id_list, sfd_dir, smd_dir, days))
             t_list.append(t)
             t.start()
 
@@ -371,11 +377,31 @@ def update_sfd_in_list(stock_id_list, sfd_dir, days, force_update=False):
     update_log_file.close()
 
 
-def t_update_sfd_in_list(stock_id_list, sfd_dir, days):
+def t_update_sfd_in_list(stock_id_list, sfd_dir, smd_dir, days):
     for stock_id in stock_id_list:
         sfd_path = "{}/{}.sfd".format(sfd_dir, stock_id)
+        smd_path = "{}/{}.smd".format(smd_dir, stock_id)
 
         # logger.logp("update {}".format(stock_id))
-        update_sfd(stock_id, days, sfd_path)
+        update_sfd(stock_id, days, sfd_path, smd_path)
 
     logger.logp("done")
+
+
+def get_trade_day_list(smd_path):
+    if not os.path.exists(smd_path):
+        print("{} not exist".format(smd_path))
+        return None
+
+    # read
+    smd_file = open(smd_path, 'r', encoding="UTF-8")
+    content_dict = json.loads(smd_file.read())
+    smd_file.close()
+
+    trade_day_list = []
+
+    for key in content_dict:
+        for trade_day in content_dict[key]:
+            trade_day_list.append(tools.tw_date2int(trade_day[0]))
+
+    return trade_day_list

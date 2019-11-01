@@ -15,6 +15,10 @@ def get_listed_list():
     while True:
         if max_try == 0:
             return None
+
+        if max_try != 3:
+            tools.delay(3)
+
         max_try -= 1
 
         try:
@@ -85,7 +89,7 @@ def get_month_data(year, month, stock_id):
     arg = "STOCK_DAY?response=json&date={}{:02d}01&stockNo={}".format(year, month, stock_id)
     url = "http://www.twse.com.tw/exchangeReport/" + arg
 
-    tools.delay(3)  # delay
+    tools.delay(5)  # delay
 
     max_try = 3
     while True:
@@ -106,6 +110,7 @@ def get_month_data(year, month, stock_id):
             continue
 
         logger.logp("Trying json decode...")
+        data = ""
         try:
             data = json.loads(res.read().decode())
             if data["stat"] != "OK":
@@ -121,7 +126,7 @@ def get_month_data(year, month, stock_id):
                 continue
 
         except:
-            logger.logp("Error: json")
+            logger.logp("Error: json \"{}\"".format(data))
             tools.wait_retry(logger, 5)
             continue
 

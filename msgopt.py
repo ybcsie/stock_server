@@ -1,4 +1,4 @@
-# last modify: 2018.09.19 16:11
+# last modify: 2019.01.16 15:36
 
 import datetime
 import os
@@ -29,8 +29,7 @@ class Logger:
         if self.log_file is not None:
             self.log_file.close()
 
-        now = datetime.datetime.now()
-        self.log_date = datetime.datetime.strptime("{}{}{}".format(now.year, now.month, now.day), Logger.DT_FORMAT)
+        self.log_date = datetime.datetime.strptime(datetime.datetime.now().strftime(Logger.DT_FORMAT), Logger.DT_FORMAT)
         log_path = "{}/{}_{}.log".format(Logger.LOG_DIR, self.log_date.strftime(Logger.DT_FORMAT), self.log_name)
 
         if not os.path.exists(Logger.LOG_DIR):
@@ -42,13 +41,13 @@ class Logger:
         if datetime.datetime.now().day != self.log_date.day:
             self.set_log_file()
 
-        Logger.add_tag(text, tag)
+        text = Logger.add_tag(text, tag)
         content = "[{}]\n{}".format(datetime.datetime.now(), text)
         self.log_file.write(content + '\n')
         self.log_file.flush()
 
     def logp(self, text, tag=""):
-        Logger.add_tag(text, tag)
+        text = Logger.add_tag(text, tag)
         self.display(text)
         self.log(text)
 

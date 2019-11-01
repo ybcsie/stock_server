@@ -40,7 +40,7 @@ def main_loop():
         logger.logp("update_smd_in_list : done\n")
 
         dataio.update_sfd_in_list(
-            listed_id_list, sfd_dir, 365 * 4, force_update)
+            listed_id_list, sfd_dir, trade_data_dir, 365 * 4, force_update)
 
         dataio.update_livedata_dict(listed_id_list, livedata_dict)
 
