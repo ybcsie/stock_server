@@ -96,7 +96,7 @@ def get_month_data(year, month, stock_id):
         logger.logp("Trying connection...")
         from socket import timeout
         try:
-            res = urllib.request.urlopen(url, timeout=5)
+            res = urllib.request.urlopen(url, timeout=10)
             logger.logp("OK")
 
         except timeout:
@@ -152,7 +152,7 @@ def get_day_trading_data(yyyymmdd):
         logger.logp("Trying connection...")
         from socket import timeout
         try:
-            res = urllib.request.urlopen(url, timeout=5)
+            res = urllib.request.urlopen(url, timeout=10)
             logger.logp("OK")
 
         except timeout:
@@ -225,7 +225,7 @@ def get_livedata_list(stock_id_list):
             arg = "getStockInfo.jsp?ex_ch={}&json=1&delay=0&_={}".format(stock_arg, int(time.time() * 1000))
             url = "http://163.29.17.179/stock/api/" + arg
             request = urllib.request.Request(url)
-            res = opener.open(request, timeout=5)
+            res = opener.open(request, timeout=10)
 
         except:
             logger.logp("Error: connection")
@@ -263,7 +263,7 @@ def get_full_data(stock_id, yyyymmdd):
             cookie = http.cookiejar.CookieJar()
             handler = urllib.request.HTTPCookieProcessor(cookie)
             opener = urllib.request.build_opener(handler)
-            res = opener.open(url, timeout=5).read().decode()
+            res = opener.open(url, timeout=10).read().decode()
 
         except:
             logger.logp("Error: connection")
@@ -289,7 +289,7 @@ def get_full_data(stock_id, yyyymmdd):
             url2 = "http://www.cmoney.tw/notice/chart/stock-chart-service.ashx" + args
             request = urllib.request.Request(url2)
             request.add_header("Referer", url)
-            res = opener.open(request, timeout=5)
+            res = opener.open(request, timeout=10)
 
         except:
             logger.logp("Error: connection")

@@ -231,8 +231,11 @@ def update_livedata_dict(stock_id_list, livedata_dict):
     for i, cur_id_list in enumerate(id_list_list):
         logger.logp("get live data {} / {}".format(i + 1, len(id_list_list)))
         livedata_list = crawler.get_livedata_list(cur_id_list)
+        logger.logp("get live data OK")
         if livedata_list is not None:
+            logger.logp("read live data list")
             read_livedata_list(livedata_list, livedata_dict)
+            logger.logp("read live data list OK")
 
     t_end = datetime.datetime.now()
     logger.logp("update_livedata : Total time = {} s".format(
