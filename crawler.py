@@ -206,17 +206,20 @@ def get_day_trading_data(yyyymmdd):
 
 
 def get_livedata_list(stock_id_list):
-    delay = 3.5
+    delay = 4
     max_try = 3
     while max_try > 0:
         tools.delay(delay)
 
         try:
+            logger.logp("connecting to livedata...")
             url = "http://163.29.17.179/stock/fibest.jsp"
             cookie = http.cookiejar.CookieJar()
             handler = urllib.request.HTTPCookieProcessor(cookie)
             opener = urllib.request.build_opener(handler)
+            logger.logp("opening url fibest...")
             opener.open(url)
+            logger.logp("url fibest opened.")
 
             stock_arg = ""
             for stock_id in stock_id_list:
@@ -225,7 +228,9 @@ def get_livedata_list(stock_id_list):
             arg = "getStockInfo.jsp?ex_ch={}&json=1&delay=0&_={}".format(stock_arg, int(time.time() * 1000))
             url = "http://163.29.17.179/stock/api/" + arg
             request = urllib.request.Request(url)
+            logger.logp("opening url getStockInfo...")
             res = opener.open(request, timeout=10)
+            logger.logp("url getStockInfo opened.")
 
         except:
             logger.logp("Error: connection")
