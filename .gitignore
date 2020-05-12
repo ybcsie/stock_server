@@ -1,6 +1,7 @@
 *.tmp
 *.js
 *.log
+*.sock
 
 stockserver.ini
 

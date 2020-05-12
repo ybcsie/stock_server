@@ -17,7 +17,7 @@ def get_listed_list():
             return None
 
         if max_try != 3:
-            tools.delay(3)
+            tools.delay(5)
 
         max_try -= 1
 
@@ -104,8 +104,9 @@ def get_month_data(year, month, stock_id):
             tools.wait_retry(logger, 10)
             continue
 
-        except :
+        except Exception as e:
             logger.logp("Error: urllib")
+            logger.logp(e)
             tools.wait_retry(logger, 30)
             continue
 

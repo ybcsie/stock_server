@@ -1,3 +1,4 @@
+import communicate
 import dataio
 import msgopt
 import tools
@@ -18,8 +19,13 @@ sfd_dir = "data/sfd"
 months = 150
 
 
-def main_loop():
+def main_loop(is_slave=False):
     logger = msgopt.Logger("main", print)
+
+    if is_slave:
+        communicate.slave_start()
+        return
+
     global is_ready
     while True:
         updated = True
@@ -111,6 +117,8 @@ if __name__ != '__main__':
     threading.Thread(target=main_loop).start()
 
 else:
+    # main_loop(is_slave=True)
     main_loop()
     # threading.Thread(target=main_loop).start()
     # threading.Thread(target=debug_loop).start()
+

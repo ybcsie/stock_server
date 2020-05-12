@@ -9,7 +9,7 @@ def tw_date2int(date_str):
 
 
 def float_parser(float_str):
-    if float_str == "X0.00":
+    if float_str == "X0.00" or float_str == "-":
         return 0.0
 
     new_str = ""

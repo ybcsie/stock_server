@@ -1,0 +1,3 @@
+[submodule "stockdata"]
+	path = data
+	url = https://gitlab.com/ybcsie/stockdata.git

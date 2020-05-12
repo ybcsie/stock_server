@@ -1,3 +1,4 @@
+import communicate
 import crawler
 import msgopt
 import tools
@@ -39,15 +40,50 @@ def get_stock_id_list(sid_path):
     return stock_id_list
 
 
+def t_update_smd_in_list(stock_id_list, smd_dir, months, slave_en, slave_id=0):
+    for stock_id in stock_id_list:
+        smd_path = "{}/{}.smd".format(smd_dir, stock_id)
+
+        logger.logp("update {}".format(stock_id))
+        update_smd(smd_path, stock_id, months, slave_en, slave_id)
+
+
 def update_smd_in_list(stock_id_list, smd_dir, months, force_update=False):
     update_log_path = smd_dir + "/update.log"
 
-    if is_smd_need_update(update_log_path) or force_update:
-        for stock_id in stock_id_list:
-            smd_path = "{}/{}.smd".format(smd_dir, stock_id)
+    if not is_smd_need_update(update_log_path) and not force_update:
+        return
 
-            logger.logp("update {}".format(stock_id))
-            update_smd(smd_path, stock_id, months)
+    communicate.master_start()
+
+    split_num = len(communicate.slaves) + 1
+    total = len(stock_id_list)
+    subtotal = int(total / split_num) + 1
+
+    t_list = []
+    stock_id_sublist_master = None
+    slave_id = -1
+
+    for i in range(0, total, subtotal):
+        if i == 0:
+            stock_id_sublist_master = stock_id_list[i:i + subtotal]
+            continue
+
+        stock_id_sublist = stock_id_list[i:i + subtotal]
+        slave_en = True
+        slave_id += 1
+
+        t = threading.Thread(target=t_update_smd_in_list, args=(
+            stock_id_sublist, smd_dir, months, slave_en, slave_id))
+        t_list.append(t)
+        t.start()
+
+    t_update_smd_in_list(stock_id_sublist_master,
+                         smd_dir, months, slave_en=False)
+
+    for t in t_list:
+        while t.is_alive():
+            tools.delay(10)
 
     update_log_file = open(update_log_path, 'w')
     update_log_file.write(datetime.datetime.now().strftime("%Y/%m/%d/%H"))
@@ -89,7 +125,7 @@ def is_content_need_update(content):
     return False
 
 
-def update_smd(smd_path, stock_id, months):
+def update_smd(smd_path, stock_id, months, slave_en, slave_id):
     exist_dict = get_smd_dict(smd_path)
 
     now = datetime.datetime.now()
@@ -107,7 +143,11 @@ def update_smd(smd_path, stock_id, months):
         content = exist_dict.get(key)
 
         if is_content_need_update(content) or i == 0:
-            content = crawler.get_month_data(cur_year, cur_month, stock_id)
+            if slave_en:
+                content = communicate.get_month_data(
+                    slave_id, cur_year, cur_month, stock_id)
+            else:
+                content = crawler.get_month_data(cur_year, cur_month, stock_id)
 
             if content is None:
                 logger.logp("cannot get data: {} {} {}".format(
@@ -201,7 +241,7 @@ def update_all_dtd(dtd_dir, months):
     now = datetime.datetime.now()
     cur_month = now.month
     cur_year = now.year
-    for i in range(months):
+    for _ in range(months):
         if cur_month == 0:
             cur_month = 12
             cur_year -= 1
@@ -375,9 +415,11 @@ def update_sfd_in_list(stock_id_list, sfd_dir, smd_dir, days, force_update=False
             while t.is_alive():
                 tools.delay(10)
 
-    update_log_file = open(update_log_path, 'w')
-    update_log_file.write(datetime.datetime.now().strftime("%Y/%m/%d/%H"))
-    update_log_file.close()
+        communicate.master_close()
+
+        update_log_file = open(update_log_path, 'w')
+        update_log_file.write(datetime.datetime.now().strftime("%Y/%m/%d/%H"))
+        update_log_file.close()
 
 
 def t_update_sfd_in_list(stock_id_list, sfd_dir, smd_dir, days):
